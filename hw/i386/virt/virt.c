@@ -47,6 +47,9 @@
 
 #include "hw/pci-host/pci-lite.h"
 
+#include "hw/timer/i8254.h"
+#include "hw/audio/pcspk.h"
+
 #include "cpu.h"
 #include "kvm_i386.h"
 
@@ -171,11 +174,19 @@ static void virt_ioapic_init(VirtMachineState *vms)
 static void virt_pci_init(VirtMachineState *vms)
 {
     MemoryRegion *pci_memory;
+    ISABus *isa_bus;
+    ISADevice *pit = NULL;
 
     pci_memory = g_new(MemoryRegion, 1);
     memory_region_init(pci_memory, NULL, "pci", UINT64_MAX);
     vms->pci_bus = pci_lite_init(get_system_memory(), get_system_io(),
                                  pci_memory);
+    isa_bus = isa_bus_new(NULL, get_system_memory(), 
+                         get_system_io(), NULL);
+    if (kvm_pit_in_kernel()) {
+            pit = kvm_pit_init(isa_bus, 0x40);
+            pcspk_init (isa_bus, pit);
+    }
 }
 
 static void virt_machine_state_init(MachineState *machine)
